@@ -232,7 +232,7 @@ export class VectorShape {
   }
 
   toJSON() {
-    return { type: 'shape', d: this.d, style: this.style };
+    return { type: 'shape', d: this.d, style: this.style, bounds: this.bounds };
   }
 }
 

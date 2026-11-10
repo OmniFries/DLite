@@ -18,6 +18,15 @@ export class DrawingDocument {
     this.layers.push(bg);
   }
 
+  /** A document made of existing layers (used when opening a file). */
+  static fromLayers(width: number, height: number, layers: Layer[], activeIndex = 0): DrawingDocument {
+    const doc = new DrawingDocument(width, height, '');
+    doc.layers = layers;
+    doc.activeIndex = Math.min(Math.max(0, activeIndex), layers.length - 1);
+    doc.counter = layers.length;
+    return doc;
+  }
+
   get active(): Layer {
     return this.layers[this.activeIndex];
   }

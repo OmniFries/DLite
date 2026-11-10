@@ -35,7 +35,9 @@ Tauri system dependencies: https://v2.tauri.app/start/prerequisites/
 | Ctrl+N | New drawing |
 | Ctrl+J / Ctrl+E | Duplicate layer / merge down |
 | Ctrl+A / Esc / Delete | Select all strokes / deselect / delete strokes |
-| Ctrl+Shift+S | Export PNG |
+| Ctrl+S / Ctrl+Shift+S | Save / Save as (.lite) |
+| Ctrl+O | Open a .lite file or an image |
+| Ctrl+Shift+E | Export PNG |
 | X | Swap to previous color |
 | Tab | Show/hide panels |
 

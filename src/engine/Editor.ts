@@ -69,8 +69,10 @@ export class Editor {
   private spaceDown = false;
   private ro: ResizeObserver | null = null;
   private cleanup: (() => void)[] = [];
-  /** Document version, bumped for thumbnails. */
+  /** Document version, bumped on every change. */
   version = 0;
+  /** Version at the last save/open; differs from `version` when there are unsaved changes. */
+  private savedVersion = 0;
 
   constructor(public settings: ToolSettings, private events: EditorEvents, width = 1920, height = 1080) {
     this.doc = this.blankDoc(width, height);
@@ -545,6 +547,38 @@ export class Editor {
 
   // ---------- document ----------
 
+  get dirty() {
+    return this.version !== this.savedVersion;
+  }
+
+  markSaved() {
+    this.savedVersion = this.version;
+    this.events.change();
+  }
+
+  /** Replaces the whole document (open file). */
+  loadDocument(doc: DrawingDocument) {
+    this.tool.cancel?.(this);
+    this.overlay = null;
+    this.doc = doc;
+    this.history.clear();
+    this.selection.clear();
+    this.fitToScreen();
+    this.changed();
+    this.markSaved();
+  }
+
+  /** Adds an image as a new raster layer above the active one, centered and scaled down to fit. */
+  addImageLayer(img: CanvasImageSource & { width: number; height: number }, name: string) {
+    const layer = new RasterLayer(name, this.doc.width, this.doc.height);
+    const s = Math.min(1, this.doc.width / img.width, this.doc.height / img.height);
+    const w = img.width * s, h = img.height * s;
+    layer.ctx.imageSmoothingQuality = 'high';
+    layer.ctx.drawImage(img, (this.doc.width - w) / 2, (this.doc.height - h) / 2, w, h);
+    this.insertLayer(layer, this.doc.activeIndex + 1, 'Add image');
+    if (s < 1) this.toast(`Image scaled to ${Math.round(s * 100)}% to fit the canvas`);
+  }
+
   newDocument(w: number, h: number, background: string | null) {
     this.tool.cancel?.(this);
     const doc = new DrawingDocument(w, h, background ?? '');
@@ -555,6 +589,7 @@ export class Editor {
     this.selection.clear();
     this.fitToScreen();
     this.changed();
+    this.markSaved();
   }
 
   async exportImage(type: 'image/png' | 'image/jpeg' | 'image/webp' = 'image/png'): Promise<Blob> {

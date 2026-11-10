@@ -7,8 +7,67 @@
   import NewDocDialog from './ui/NewDocDialog.svelte';
   import ToolRail from './ui/ToolRail.svelte';
   import TopBar from './ui/TopBar.svelte';
-  import { exportImage } from './ui/files';
+  import ConfirmDialog from './ui/ConfirmDialog.svelte';
+  import {
+    addImageAsLayer,
+    confirmDiscard,
+    exportImage,
+    handleDroppedFile,
+    newDocumentRequest,
+    openDocument,
+    saveDocument,
+    updateTitle,
+  } from './ui/files';
   import { editor, settings, ui } from './ui/state.svelte';
+
+  // Window title shows the file name and a dot for unsaved changes.
+  $effect(() => {
+    ui.docName;
+    ui.dirty;
+    updateTitle();
+  });
+
+  let dragOver = $state(false);
+
+  function onDrop(e: DragEvent) {
+    dragOver = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    e.preventDefault();
+    void handleDroppedFile(file);
+  }
+
+  function onDragOver(e: DragEvent) {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    dragOver = true;
+  }
+
+  /** Pasting an image adds it as a new layer. */
+  function onPaste(e: ClipboardEvent) {
+    const t = e.target as HTMLElement;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
+    const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith('image/'));
+    const file = item?.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    void addImageAsLayer(file, 'Pasted image').catch(() => editor.toast("That image couldn't be pasted"));
+  }
+
+  // Warn before closing with unsaved changes.
+  function onBeforeUnload(e: BeforeUnloadEvent) {
+    if (editor.dirty) e.preventDefault();
+  }
+  if ('__TAURI_INTERNALS__' in window) {
+    void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+      const win = getCurrentWindow();
+      void win.onCloseRequested(async (event) => {
+        if (!editor.dirty) return;
+        event.preventDefault();
+        if (await confirmDiscard()) await win.destroy();
+      });
+    });
+  }
 
   const toolKeys: Record<string, ToolId> = {
     v: 'select',
@@ -24,7 +83,7 @@
 
   function onKey(e: KeyboardEvent) {
     const t = e.target as HTMLElement;
-    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || ui.newDocOpen) return;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || ui.newDocOpen || ui.dialog) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     if (mod) {
@@ -32,8 +91,10 @@
       if (k === 'z' && e.shiftKey) return handled(), editor.redo();
       if (k === 'z') return handled(), editor.undo();
       if (k === 'y') return handled(), editor.redo();
-      if (k === 'n') return handled(), (ui.newDocOpen = true);
-      if (k === 's' && e.shiftKey) return handled(), exportImage('image/png');
+      if (k === 'n') return handled(), newDocumentRequest();
+      if (k === 'o') return handled(), openDocument();
+      if (k === 's') return handled(), saveDocument(e.shiftKey);
+      if (k === 'e' && e.shiftKey) return handled(), exportImage('image/png');
       if (k === 'a') return handled(), editor.selectAll();
       if (k === 'd') return handled(), editor.deselect();
       if (k === 'j') return handled(), editor.duplicateLayer();
@@ -73,7 +134,14 @@
   }
 </script>
 
-<svelte:window onkeydown={onKey} />
+<svelte:window
+  onkeydown={onKey}
+  onpaste={onPaste}
+  ondragover={onDragOver}
+  ondragleave={(e) => !e.relatedTarget && (dragOver = false)}
+  ondrop={onDrop}
+  onbeforeunload={onBeforeUnload}
+/>
 
 <div class="app">
   <TopBar />
@@ -91,6 +159,14 @@
   </div>
   {#if ui.toast}
     <div class="snackbar" role="status">{ui.toast}</div>
+  {/if}
+  {#if dragOver}
+    <div class="drop-hint" aria-hidden="true">
+      <div>Drop a .lite file to open it, or an image to add it as a layer</div>
+    </div>
+  {/if}
+  {#if ui.dialog}
+    <ConfirmDialog req={ui.dialog} />
   {/if}
   {#if ui.newDocOpen}
     <NewDocDialog />
@@ -144,6 +220,24 @@
     background: var(--outline-variant);
     margin: 0 16px;
     flex: none;
+  }
+  .drop-hint {
+    position: fixed;
+    inset: 8px;
+    border: 2px dashed var(--primary);
+    border-radius: var(--radius-l);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    display: grid;
+    place-items: center;
+    z-index: 120;
+    pointer-events: none;
+  }
+  .drop-hint div {
+    background: var(--surface);
+    padding: 12px 20px;
+    border-radius: var(--radius-full);
+    box-shadow: var(--elev-2);
+    font-weight: 500;
   }
   .snackbar {
     position: fixed;

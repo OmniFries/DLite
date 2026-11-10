@@ -26,8 +26,36 @@ export const ui = $state({
   panelOpen: true,
   selectionCount: 0,
   newDocOpen: false,
+  /** File name shown in the top bar (with .lite once saved). */
+  docName: 'Untitled',
+  dirty: false,
+  saving: false,
+  /** Open confirm dialog, if any. */
+  dialog: null as DialogRequest | null,
   recentColors: ['#1f1f1f', '#ffffff', '#ea4335', '#fbbc04', '#34a853', '#1a73e8', '#a142f4', '#ff6d01'] as string[],
 });
+
+export interface DialogRequest {
+  title: string;
+  message: string;
+  buttons: { id: string; label: string; kind?: 'filled' | 'text' }[];
+  resolve: (id: string) => void;
+}
+
+/** Shows a Material-style dialog and resolves with the id of the button pressed ('cancel' on Escape). */
+export function ask(title: string, message: string, buttons: DialogRequest['buttons']): Promise<string> {
+  return new Promise((resolve) => {
+    ui.dialog = {
+      title,
+      message,
+      buttons,
+      resolve: (id) => {
+        ui.dialog = null;
+        resolve(id);
+      },
+    };
+  });
+}
 
 let toastTimer = 0;
 
@@ -36,6 +64,7 @@ export const editor = new Editor(settings, {
     ui.canUndo = editor.history.canUndo;
     ui.canRedo = editor.history.canRedo;
     ui.selectionCount = editor.selection.size;
+    ui.dirty = editor.dirty;
     ui.version++;
   },
   view() {

@@ -136,3 +136,22 @@ describe('VectorStroke.transformed', () => {
     expect(s.transformed([-1, 0, 0, 1, 0, 0]).style.size).toBeCloseTo(10);
   });
 });
+
+import { openLite, LiteFormatError } from '../src/engine/io/liteFormat';
+import { strToU8, zipSync } from 'fflate';
+
+describe('openLite rejects bad files', () => {
+  const zipWith = (manifest: unknown) => zipSync({ 'manifest.json': strToU8(JSON.stringify(manifest)) });
+  it('rejects non-zip data', async () => {
+    await expect(openLite(new Uint8Array([1, 2, 3]))).rejects.toBeInstanceOf(LiteFormatError);
+  });
+  it('rejects a zip without a manifest', async () => {
+    await expect(openLite(zipSync({ 'a.txt': strToU8('hi') }))).rejects.toThrow(/no manifest/);
+  });
+  it('rejects other formats, newer versions and bad sizes', async () => {
+    await expect(openLite(zipWith({ format: 'other' }))).rejects.toThrow(/isn't a DLite/);
+    await expect(openLite(zipWith({ format: 'dlite', version: 99, width: 10, height: 10, layers: [{}] }))).rejects.toThrow(/newer version/);
+    await expect(openLite(zipWith({ format: 'dlite', version: 1, width: 0, height: 10, layers: [{}] }))).rejects.toThrow(/canvas size/);
+    await expect(openLite(zipWith({ format: 'dlite', version: 1, width: 10, height: 10, layers: [] }))).rejects.toThrow(/no layers/);
+  });
+});
