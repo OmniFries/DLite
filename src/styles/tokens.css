@@ -1,0 +1,275 @@
+/* Material 3–inspired tokens. One accent color, tonal surfaces, soft elevation. */
+:root {
+  --primary: #1a73e8;
+  --on-primary: #ffffff;
+  --primary-container: #d3e3fd;
+  --on-primary-container: #041e49;
+  --surface: #ffffff;
+  --surface-dim: #f8fafd;
+  --surface-container: #f0f4f9;
+  --surface-container-high: #e9eef6;
+  --on-surface: #1f1f1f;
+  --on-surface-variant: #444746;
+  --outline: #c4c7c5;
+  --outline-variant: #e3e3e3;
+  --workspace: #eef1f5;
+  --scrim: rgba(0, 0, 0, 0.32);
+  --elev-1: 0 1px 2px rgba(60, 64, 67, 0.15), 0 1px 3px 1px rgba(60, 64, 67, 0.08);
+  --elev-2: 0 1px 2px rgba(60, 64, 67, 0.2), 0 2px 6px 2px rgba(60, 64, 67, 0.12);
+  --elev-3: 0 4px 8px 3px rgba(60, 64, 67, 0.15), 0 1px 3px rgba(60, 64, 67, 0.3);
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-full: 999px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 150ms;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --primary: #a8c7fa;
+    --on-primary: #062e6f;
+    --primary-container: #0842a0;
+    --on-primary-container: #d3e3fd;
+    --surface: #1e1f20;
+    --surface-dim: #131314;
+    --surface-container: #282a2c;
+    --surface-container-high: #333537;
+    --on-surface: #e3e3e3;
+    --on-surface-variant: #c4c7c5;
+    --outline: #8e918f;
+    --outline-variant: #444746;
+    --workspace: #131314;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --primary: #a8c7fa;
+  --on-primary: #062e6f;
+  --primary-container: #0842a0;
+  --on-primary-container: #d3e3fd;
+  --surface: #1e1f20;
+  --surface-dim: #131314;
+  --surface-container: #282a2c;
+  --surface-container-high: #333537;
+  --on-surface: #e3e3e3;
+  --on-surface-variant: #c4c7c5;
+  --outline: #8e918f;
+  --outline-variant: #444746;
+  --workspace: #131314;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--on-surface);
+  background: var(--surface-dim);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  font-size: 20px;
+  line-height: 0;
+  flex: none;
+}
+.icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: inline-grid;
+  place-items: center;
+  color: var(--on-surface-variant);
+  transition: background var(--dur) var(--ease);
+}
+.icon-btn:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+.icon-btn:active {
+  background: color-mix(in srgb, var(--on-surface) 12%, transparent);
+}
+.icon-btn:disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+.icon-btn.small {
+  width: 28px;
+  height: 28px;
+}
+
+.text-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  color: var(--primary);
+  transition: background var(--dur) var(--ease);
+}
+.text-btn:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.filled-btn {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: box-shadow var(--dur) var(--ease);
+}
+.filled-btn:hover {
+  box-shadow: var(--elev-1);
+}
+.tonal-btn {
+  height: 36px;
+  padding: 0 16px 0 12px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 20px;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--primary) 0,
+    var(--primary) var(--fill, 50%),
+    var(--primary-container) var(--fill, 50%)
+  );
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 0;
+}
+input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--primary-container);
+}
+input[type='range']::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 0;
+}
+
+input[type='text'],
+input[type='number'],
+select {
+  font: inherit;
+  color: inherit;
+  background: var(--surface-container);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  height: 32px;
+  padding: 0 10px;
+  outline: none;
+}
+input[type='text']:focus,
+input[type='number']:focus,
+select:focus {
+  border-color: var(--primary);
+}
+
+.tooltip {
+  position: relative;
+}
+.tooltip[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  white-space: nowrap;
+  background: var(--on-surface);
+  color: var(--surface);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 50;
+  animation: tip-in 120ms var(--ease) 400ms both;
+}
+.tooltip.right[data-tip]:hover::after {
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tooltip.below[data-tip]:hover::after {
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 5px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
