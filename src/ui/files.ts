@@ -23,12 +23,11 @@ const OPEN_TYPES: PickerTypes = [
   { description: 'DLite drawings and images', accept: { 'application/x-dlite': ['.lite'], 'image/*': IMAGE_EXT.map((e) => '.' + e) } },
 ];
 
-/** Where the current drawing lives, so Ctrl+S can save back to it. */
-let current: { handle?: FileHandle; path?: string } = {};
-
-function setName(name: string) {
-  ui.docName = name;
-  updateTitle();
+/** Records where the active tab's drawing lives, so Ctrl+S can save back to it. */
+function setFile(name: string, file: { handle?: FileHandle; path?: string }) {
+  editor.session.name = name;
+  editor.session.file = file;
+  editor.sessionChanged();
 }
 
 export function updateTitle() {
@@ -47,10 +46,10 @@ function fail(err: unknown, what: string) {
 
 // ---------- unsaved changes ----------
 
-/** Asks what to do with unsaved changes. Returns false if the user cancelled. */
+/** Asks what to do with the active tab's unsaved changes. Returns false if the user cancelled. */
 export async function confirmDiscard(): Promise<boolean> {
   if (!editor.dirty) return true;
-  const choice = await ask('Save changes?', `“${ui.docName}” has changes that haven't been saved.`, [
+  const choice = await ask('Save changes?', `“${editor.session.name}” has changes that haven't been saved.`, [
     { id: 'cancel', label: 'Cancel' },
     { id: 'discard', label: "Don't save" },
     { id: 'save', label: 'Save', kind: 'filled' },
@@ -67,7 +66,8 @@ export async function saveDocument(saveAs: boolean): Promise<boolean> {
   ui.saving = true;
   try {
     const bytes = await saveLite(editor.doc);
-    const suggested = withLite(ui.docName);
+    const suggested = withLite(editor.session.name);
+    const current = editor.session.file as { handle?: FileHandle; path?: string };
     if (isTauri()) {
       let path = saveAs ? undefined : current.path;
       if (!path) {
@@ -78,20 +78,18 @@ export async function saveDocument(saveAs: boolean): Promise<boolean> {
       }
       const { writeFile } = await import('@tauri-apps/plugin-fs');
       await writeFile(path, bytes);
-      current = { path };
-      setName(baseName(path));
+      setFile(baseName(path), { path });
     } else if (fsWin.showSaveFilePicker) {
       let handle = saveAs ? undefined : current.handle;
       handle ??= await fsWin.showSaveFilePicker({ suggestedName: suggested, types: LITE_TYPES });
       const w = await handle.createWritable();
       await w.write(new Blob([bytes as BlobPart]));
       await w.close();
-      current = { handle };
-      setName(handle.name);
+      setFile(handle.name, { handle });
     } else {
       // Browsers without file access (Firefox, Safari): download the file each time.
       download(new Blob([bytes as BlobPart], { type: 'application/x-dlite' }), suggested);
-      setName(suggested);
+      setFile(suggested, {});
     }
     editor.markSaved();
     editor.toast('Saved');
@@ -106,8 +104,8 @@ export async function saveDocument(saveAs: boolean): Promise<boolean> {
 
 // ---------- open ----------
 
+/** Opens a file in a new tab. */
 export async function openDocument() {
-  if (!(await confirmDiscard())) return;
   try {
     if (isTauri()) {
       const { open } = await import('@tauri-apps/plugin-dialog');
@@ -129,16 +127,17 @@ export async function openDocument() {
   }
 }
 
-async function openBytes(name: string, bytes: Uint8Array, where: typeof current) {
+async function openBytes(name: string, bytes: Uint8Array, where: { handle?: FileHandle; path?: string }) {
   if (extOf(name) === 'lite') {
-    editor.loadDocument(await openLite(bytes));
-    current = where;
-    setName(name);
+    // Already open? Just switch to it.
+    const i = editor.sessions.findIndex(
+      (s) => (where.path && s.file.path === where.path) || (where.handle && s.file.handle === where.handle),
+    );
+    if (i >= 0) return editor.switchTab(i);
+    editor.openTab(await openLite(bytes), name, where);
   } else {
     // An image opens as a new, unsaved drawing.
-    editor.loadDocument(await documentFromImage(new Blob([bytes as BlobPart])));
-    current = {};
-    setName(name.replace(/\.[^.]+$/, ''));
+    editor.openTab(await documentFromImage(new Blob([bytes as BlobPart])), name.replace(/\.[^.]+$/, ''));
   }
   editor.toast(`Opened ${name}`);
 }
@@ -147,7 +146,6 @@ async function openBytes(name: string, bytes: Uint8Array, where: typeof current)
 export async function handleDroppedFile(file: File) {
   try {
     if (extOf(file.name) === 'lite') {
-      if (!(await confirmDiscard())) return;
       await openBytes(file.name, new Uint8Array(await file.arrayBuffer()), {});
     } else if (file.type.startsWith('image/') || IMAGE_EXT.includes(extOf(file.name))) {
       await addImageAsLayer(file, file.name.replace(/\.[^.]+$/, ''));
@@ -163,14 +161,37 @@ export async function addImageAsLayer(blob: Blob, name: string) {
   bmp.close();
 }
 
-export async function newDocumentRequest() {
-  if (await confirmDiscard()) ui.newDocOpen = true;
+export function newDocumentRequest() {
+  ui.newDocOpen = true;
 }
 
-/** Called after "New drawing" is created. */
-export function resetFile() {
-  current = {};
-  setName('Untitled');
+/** Closes a tab, asking about unsaved changes first. */
+export async function closeTabRequest(index: number) {
+  const s = editor.sessions[index];
+  if (!s) return;
+  if (s.dirty) {
+    editor.switchTab(index);
+    if (!(await confirmDiscard())) return;
+  }
+  editor.closeTab(editor.sessions.indexOf(s));
+}
+
+/** Number of open drawings with unsaved changes. */
+export const unsavedCount = () => editor.sessions.filter((s) => s.dirty).length;
+
+/** Before quitting: true if it's fine to close the app. */
+export async function confirmQuit(): Promise<boolean> {
+  const n = unsavedCount();
+  if (!n) return true;
+  const choice = await ask(
+    'Close DLite?',
+    n === 1 ? 'One drawing has unsaved changes.' : `${n} drawings have unsaved changes.`,
+    [
+      { id: 'cancel', label: 'Cancel', kind: 'filled' },
+      { id: 'quit', label: 'Close without saving' },
+    ],
+  );
+  return choice === 'quit';
 }
 
 // ---------- export ----------
@@ -179,7 +200,7 @@ export function resetFile() {
 export async function exportImage(type: 'image/png' | 'image/jpeg' | 'image/webp') {
   try {
     const blob = await editor.exportImage(type);
-    const name = `${ui.docName.replace(/\.lite$/i, '')}.${EXT[type]}`;
+    const name = `${editor.session.name.replace(/\.lite$/i, '')}.${EXT[type]}`;
     if (isTauri()) {
       const { save } = await import('@tauri-apps/plugin-dialog');
       const { writeFile } = await import('@tauri-apps/plugin-fs');

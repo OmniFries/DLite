@@ -1,6 +1,5 @@
 <script lang="ts">
   import { editor, ui } from './state.svelte';
-  import { resetFile } from './files';
 
   const presets = [
     { label: 'HD', w: 1920, h: 1080 },
@@ -18,7 +17,6 @@
     const W = Math.round(Math.min(8192, Math.max(1, w)));
     const H = Math.round(Math.min(8192, Math.max(1, h)));
     editor.newDocument(W, H, bg === 'white' ? '#ffffff' : null);
-    resetFile();
     ui.newDocOpen = false;
   }
 </script>
@@ -40,7 +38,7 @@
     }}
   >
     <h2 id="nd-title">New drawing</h2>
-    <p class="warn">Choose a size for your new drawing.</p>
+    <p class="warn">It opens in a new tab.</p>
     <div class="presets">
       {#each presets as p (p.label)}
         <button class="preset" class:on={w === p.w && h === p.h} onclick={() => ((w = p.w), (h = p.h))}>

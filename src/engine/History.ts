@@ -1,3 +1,5 @@
+let nextUid = 1;
+
 export interface HistoryEntry {
   label: string;
   /** Approximate memory held by this entry. */
@@ -8,7 +10,9 @@ export interface HistoryEntry {
 
 /** Linear undo/redo stack with a memory budget. Oldest entries are dropped first. */
 export class History {
-  private entries: HistoryEntry[] = [];
+  private entries: (HistoryEntry & { uid?: number })[] = [];
+  /** Identifies the state before the first entry (changes when old entries are dropped). */
+  private baseUid = nextUid++;
   private index = 0; // number of applied entries
   private bytes = 0;
   constructor(public maxBytes = 512 * 1024 * 1024, public maxEntries = 200) {}
@@ -16,14 +20,20 @@ export class History {
   push(e: HistoryEntry) {
     // Drop the redo branch.
     for (const dropped of this.entries.splice(this.index)) this.bytes -= dropped.bytes;
-    this.entries.push(e);
+    this.entries.push({ ...e, uid: nextUid++ });
     this.bytes += e.bytes;
     this.index = this.entries.length;
     while (this.entries.length > 1 && (this.bytes > this.maxBytes || this.entries.length > this.maxEntries)) {
       const old = this.entries.shift()!;
       this.bytes -= old.bytes;
+      this.baseUid = old.uid!;
       this.index--;
     }
+  }
+
+  /** Identifies the current document state: same id means same content. */
+  get stateId(): number {
+    return this.index > 0 ? this.entries[this.index - 1].uid! : this.baseUid;
   }
 
   get canUndo() {
@@ -48,6 +58,7 @@ export class History {
   }
 
   clear() {
+    this.baseUid = nextUid++;
     this.entries = [];
     this.index = 0;
     this.bytes = 0;

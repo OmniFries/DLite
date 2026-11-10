@@ -6,11 +6,14 @@
   import LayersPanel from './ui/LayersPanel.svelte';
   import NewDocDialog from './ui/NewDocDialog.svelte';
   import ToolRail from './ui/ToolRail.svelte';
+  import TabBar from './ui/TabBar.svelte';
   import TopBar from './ui/TopBar.svelte';
   import ConfirmDialog from './ui/ConfirmDialog.svelte';
   import {
     addImageAsLayer,
-    confirmDiscard,
+    closeTabRequest,
+    confirmQuit,
+    unsavedCount,
     exportImage,
     handleDroppedFile,
     newDocumentRequest,
@@ -56,15 +59,15 @@
 
   // Warn before closing with unsaved changes.
   function onBeforeUnload(e: BeforeUnloadEvent) {
-    if (editor.dirty) e.preventDefault();
+    if (unsavedCount()) e.preventDefault();
   }
   if ('__TAURI_INTERNALS__' in window) {
     void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
       const win = getCurrentWindow();
       void win.onCloseRequested(async (event) => {
-        if (!editor.dirty) return;
+        if (!unsavedCount()) return;
         event.preventDefault();
-        if (await confirmDiscard()) await win.destroy();
+        if (await confirmQuit()) await win.destroy();
       });
     });
   }
@@ -93,6 +96,9 @@
       if (k === 'y') return handled(), editor.redo();
       if (k === 'n') return handled(), newDocumentRequest();
       if (k === 'o') return handled(), openDocument();
+      if (k === 'w') return handled(), closeTabRequest(editor.activeSession);
+      const step = (d: number) => editor.switchTab((editor.activeSession + d + editor.sessions.length) % editor.sessions.length);
+      if (k === 'tab' || k === 'pagedown' || k === 'pageup') return handled(), step(k === 'pageup' || e.shiftKey ? -1 : 1);
       if (k === 's') return handled(), saveDocument(e.shiftKey);
       if (k === 'e' && e.shiftKey) return handled(), exportImage('image/png');
       if (k === 'a') return handled(), editor.selectAll();
@@ -148,6 +154,7 @@
   <div class="body">
     <ToolRail />
     <main class="work">
+      <TabBar />
       <ContextBar />
       <CanvasView />
     </main>

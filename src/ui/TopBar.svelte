@@ -2,7 +2,7 @@
   import Icon from './Icon.svelte';
   import Logo from './Logo.svelte';
   import { editor, ui } from './state.svelte';
-  import { exportImage, newDocumentRequest, openDocument, saveDocument } from './files';
+  import { exportImage, openDocument, saveDocument } from './files';
 
   let exportOpen = $state(false);
   let zoomText = $derived(Math.round(ui.zoom * 100) + '%');
@@ -22,15 +22,7 @@
     <Logo />
     <span class="title">DLite</span>
   </div>
-  <div class="doc-name tooltip below" data-tip={ui.dirty ? 'Unsaved changes' : 'All changes saved'}>
-    <span class="name">{ui.docName}</span>
-    {#if ui.saving}<span class="saving">Saving…</span>{:else if ui.dirty}<span class="dot" aria-label="Unsaved changes"></span>{/if}
-  </div>
-
   <div class="group">
-    <button class="icon-btn tooltip below" data-tip="New drawing (Ctrl+N)" aria-label="New drawing" onclick={newDocumentRequest}>
-      <Icon name="note_add" />
-    </button>
     <button class="icon-btn tooltip below" data-tip="Open (Ctrl+O)" aria-label="Open" onclick={openDocument}>
       <Icon name="folder_open" />
     </button>
@@ -108,34 +100,6 @@
   .title {
     font-size: 18px;
     color: var(--on-surface-variant);
-  }
-  .doc-name {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    max-width: 260px;
-    height: 32px;
-    padding: 0 12px;
-    margin-right: 8px;
-    border-radius: var(--radius-full);
-    background: var(--surface-container);
-    font-size: 13px;
-  }
-  .doc-name .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .doc-name .saving {
-    color: var(--on-surface-variant);
-    flex: none;
-  }
-  .doc-name .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--primary);
-    flex: none;
   }
   .vsep {
     width: 1px;

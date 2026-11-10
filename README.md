@@ -32,11 +32,13 @@ Tauri system dependencies: https://v2.tauri.app/start/prerequisites/
 | Ctrl + scroll | Zoom |
 | Ctrl+Z / Ctrl+Shift+Z | Undo / redo |
 | Ctrl+0 / Ctrl+1 | Fit / 100% |
-| Ctrl+N | New drawing |
+| Ctrl+N | New drawing (new tab) |
 | Ctrl+J / Ctrl+E | Duplicate layer / merge down |
 | Ctrl+A / Esc / Delete | Select all strokes / deselect / delete strokes |
 | Ctrl+S / Ctrl+Shift+S | Save / Save as (.lite) |
-| Ctrl+O | Open a .lite file or an image |
+| Ctrl+O | Open a .lite file or an image (in a new tab) |
+| Ctrl+W | Close tab |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab (desktop app; browsers keep these keys) |
 | Ctrl+Shift+E | Export PNG |
 | X | Swap to previous color |
 | Tab | Show/hide panels |

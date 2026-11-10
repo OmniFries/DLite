@@ -155,3 +155,22 @@ describe('openLite rejects bad files', () => {
     await expect(openLite(zipWith({ format: 'dlite', version: 1, width: 10, height: 10, layers: [] }))).rejects.toThrow(/no layers/);
   });
 });
+
+describe('History.stateId', () => {
+  it('returns to the saved id after undo and changes after a new edit', () => {
+    const h = new History();
+    const e = () => ({ label: '', bytes: 1, undo() {}, redo() {} });
+    const start = h.stateId;
+    h.push(e());
+    const saved = h.stateId;
+    expect(saved).not.toBe(start);
+    h.push(e());
+    h.undo();
+    expect(h.stateId).toBe(saved);
+    h.undo();
+    expect(h.stateId).toBe(start);
+    h.redo();
+    h.push(e()); // branch: different from anything before
+    expect([start, saved]).not.toContain(h.stateId);
+  });
+});

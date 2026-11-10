@@ -1,6 +1,7 @@
 import { Compositor, type LayerOverlay } from './Compositor';
 import { DrawingDocument } from './Document';
-import { History, type HistoryEntry } from './History';
+import type { HistoryEntry } from './History';
+import { DocSession, type FileRef } from './Session';
 import { RasterLayer, VectorLayer, type Layer } from './Layer';
 import { Viewport } from './Viewport';
 import type { VectorItem } from './vector/VectorItem';
@@ -43,13 +44,12 @@ export interface EditorEvents {
 }
 
 export class Editor {
-  doc: DrawingDocument;
-  readonly history = new History();
+  /** Open drawings, one per tab. */
+  sessions: DocSession[];
+  activeSession = 0;
   readonly viewport = new Viewport();
   compositor!: Compositor;
   overlay: LayerOverlay | null = null;
-  /** Ids of selected vector items on the active layer. */
-  readonly selection = new Set<number>();
   readonly tools: Record<ToolId, Tool> = {
     brush: new BrushTool('brush'),
     pencil: new BrushTool('pencil'),
@@ -69,13 +69,30 @@ export class Editor {
   private spaceDown = false;
   private ro: ResizeObserver | null = null;
   private cleanup: (() => void)[] = [];
-  /** Document version, bumped on every change. */
-  version = 0;
-  /** Version at the last save/open; differs from `version` when there are unsaved changes. */
-  private savedVersion = 0;
 
   constructor(public settings: ToolSettings, private events: EditorEvents, width = 1920, height = 1080) {
-    this.doc = this.blankDoc(width, height);
+    this.sessions = [new DocSession(this.blankDoc(width, height), 'Untitled')];
+  }
+
+  /** The drawing in the active tab. */
+  get session(): DocSession {
+    return this.sessions[this.activeSession];
+  }
+  get doc(): DrawingDocument {
+    return this.session.doc;
+  }
+  get history() {
+    return this.session.history;
+  }
+  /** Ids of selected vector items on the active layer. */
+  get selection() {
+    return this.session.selection;
+  }
+  get version() {
+    return this.session.version;
+  }
+  set version(v: number) {
+    this.session.version = v;
   }
 
   private blankDoc(w: number, h: number) {
@@ -548,24 +565,89 @@ export class Editor {
   // ---------- document ----------
 
   get dirty() {
-    return this.version !== this.savedVersion;
+    return this.session.dirty;
   }
 
   markSaved() {
-    this.savedVersion = this.version;
+    this.session.savedState = this.history.stateId;
     this.events.change();
   }
 
-  /** Replaces the whole document (open file). */
-  loadDocument(doc: DrawingDocument) {
+  /** Tells the UI that tab names or file info changed. */
+  sessionChanged() {
+    this.events.change();
+  }
+
+  // ---------- tabs ----------
+
+  /** Remembers the view of the active tab before switching away. */
+  private stashView() {
+    const v = this.viewport;
+    this.session.view = { zoom: v.zoom, offsetX: v.offsetX, offsetY: v.offsetY };
+  }
+
+  private showSession(index: number) {
     this.tool.cancel?.(this);
     this.overlay = null;
-    this.doc = doc;
-    this.history.clear();
-    this.selection.clear();
-    this.fitToScreen();
-    this.changed();
-    this.markSaved();
+    this.activeSession = index;
+    const view = this.session.view;
+    if (view && this.viewport.width) {
+      this.viewport.zoom = view.zoom;
+      this.viewport.offsetX = view.offsetX;
+      this.viewport.offsetY = view.offsetY;
+    } else this.viewport.fit(this.doc.width, this.doc.height);
+    this.events.change();
+    this.viewChanged();
+  }
+
+  switchTab(index: number) {
+    if (this.activePointer !== null || index === this.activeSession || !this.sessions[index]) return;
+    this.stashView();
+    this.showSession(index);
+  }
+
+  /**
+   * Shows a document in a new tab after the active one. An untouched
+   * "Untitled" tab is reused instead, so opening a file right away doesn't
+   * leave an empty tab behind.
+   */
+  openTab(doc: DrawingDocument, name: string, file: FileRef = {}): DocSession {
+    const session = new DocSession(doc, name);
+    session.file = file;
+    if (this.session.pristine) {
+      this.sessions[this.activeSession] = session;
+      this.showSession(this.activeSession);
+    } else {
+      this.stashView();
+      this.sessions.splice(this.activeSession + 1, 0, session);
+      this.showSession(this.activeSession + 1);
+    }
+    return session;
+  }
+
+  /** Closes a tab without asking (the UI asks about unsaved changes first). */
+  closeTab(index: number) {
+    if (!this.sessions[index] || this.activePointer !== null) return;
+    if (this.sessions.length === 1) {
+      this.sessions = [new DocSession(this.blankDoc(this.doc.width, this.doc.height), 'Untitled')];
+      this.showSession(0);
+      return;
+    }
+    const wasActive = index === this.activeSession;
+    if (!wasActive) this.stashView();
+    this.sessions.splice(index, 1);
+    if (index < this.activeSession || this.activeSession >= this.sessions.length) this.activeSession--;
+    this.showSession(Math.max(0, this.activeSession));
+  }
+
+  moveTab(from: number, to: number) {
+    to = Math.max(0, Math.min(this.sessions.length - 1, to));
+    if (from === to) return;
+    const active = this.session;
+    const [s] = this.sessions.splice(from, 1);
+    this.sessions.splice(to, 0, s);
+    this.activeSession = this.sessions.indexOf(active);
+    this.events.change();
   }
 
   /** Adds an image as a new raster layer above the active one, centered and scaled down to fit. */
@@ -579,17 +661,13 @@ export class Editor {
     if (s < 1) this.toast(`Image scaled to ${Math.round(s * 100)}% to fit the canvas`);
   }
 
+  /** Creates a blank drawing in a new tab. */
   newDocument(w: number, h: number, background: string | null) {
-    this.tool.cancel?.(this);
     const doc = new DrawingDocument(w, h, background ?? '');
     if (!background) doc.layers[0].name = 'Layer 1';
     else doc.insert(doc.createRaster(), 1);
-    this.doc = doc;
-    this.history.clear();
-    this.selection.clear();
-    this.fitToScreen();
-    this.changed();
-    this.markSaved();
+    const untitled = this.sessions.filter((s) => /^Untitled( \d+)?$/.test(s.name)).length;
+    this.openTab(doc, untitled && !this.session.pristine ? `Untitled ${untitled + 1}` : 'Untitled');
   }
 
   async exportImage(type: 'image/png' | 'image/jpeg' | 'image/webp' = 'image/png'): Promise<Blob> {

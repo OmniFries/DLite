@@ -30,6 +30,8 @@ export const ui = $state({
   docName: 'Untitled',
   dirty: false,
   saving: false,
+  tabs: [] as { id: number; name: string; dirty: boolean }[],
+  activeTab: 0,
   /** Open confirm dialog, if any. */
   dialog: null as DialogRequest | null,
   recentColors: ['#1f1f1f', '#ffffff', '#ea4335', '#fbbc04', '#34a853', '#1a73e8', '#a142f4', '#ff6d01'] as string[],
@@ -60,13 +62,7 @@ export function ask(title: string, message: string, buttons: DialogRequest['butt
 let toastTimer = 0;
 
 export const editor = new Editor(settings, {
-  change() {
-    ui.canUndo = editor.history.canUndo;
-    ui.canRedo = editor.history.canRedo;
-    ui.selectionCount = editor.selection.size;
-    ui.dirty = editor.dirty;
-    ui.version++;
-  },
+  change: sync,
   view() {
     ui.zoom = editor.viewport.zoom;
   },
@@ -82,6 +78,19 @@ export const editor = new Editor(settings, {
     ui.tool = id;
   },
 });
+
+/** Copies the editor's state into the reactive UI state. */
+function sync() {
+  ui.canUndo = editor.history.canUndo;
+  ui.canRedo = editor.history.canRedo;
+  ui.selectionCount = editor.selection.size;
+  ui.version++;
+  ui.dirty = editor.dirty;
+  ui.docName = editor.session.name;
+  ui.tabs = editor.sessions.map((s) => ({ id: s.id, name: s.name, dirty: s.dirty }));
+  ui.activeTab = editor.activeSession;
+}
+sync();
 
 export function pushRecent(hex: string) {
   const list = ui.recentColors.filter((c) => c.toLowerCase() !== hex.toLowerCase());
