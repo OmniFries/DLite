@@ -142,6 +142,18 @@ async function openBytes(name: string, bytes: Uint8Array, where: { handle?: File
   editor.toast(`Opened ${name}`);
 }
 
+/** Opens files from disk by path (desktop app: files double-clicked in the OS). */
+export async function openPaths(paths: string[]) {
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  for (const path of paths) {
+    try {
+      await openBytes(baseName(path), await readFile(path), { path });
+    } catch (err) {
+      fail(err, 'Opening');
+    }
+  }
+}
+
 /** Drag-and-drop: a .lite file opens; an image is added as a new layer. */
 export async function handleDroppedFile(file: File) {
   try {

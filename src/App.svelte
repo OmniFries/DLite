@@ -19,6 +19,7 @@
     handleDroppedFile,
     newDocumentRequest,
     openDocument,
+    openPaths,
     saveDocument,
     updateTitle,
   } from './ui/files';
@@ -63,6 +64,15 @@
     if (unsavedCount()) e.preventDefault();
   }
   if ('__TAURI_INTERNALS__' in window) {
+    // .lite files double-clicked in the OS: at launch, and later while running (macOS).
+    void Promise.all([import('@tauri-apps/api/core'), import('@tauri-apps/api/event')]).then(([{ invoke }, { listen }]) => {
+      const take = async () => {
+        const paths = await invoke<string[]>('take_open_files');
+        if (paths.length) await openPaths(paths);
+      };
+      void listen('open-files', take);
+      void take();
+    });
     void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
       const win = getCurrentWindow();
       void win.onCloseRequested(async (event) => {

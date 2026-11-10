@@ -36,8 +36,27 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "android": {
-      "debugApplicationIdSuffix": ".debug"
+    "publisher": "OmniFries",
+    "copyright": "\u00a9 2026 OmniFries",
+    "category": "GraphicsAndDesign",
+    "shortDescription": "A lightweight drawing app",
+    "longDescription": "DLite is a lightweight drawing app with raster and vector layers, pressure brushes, Animate-style vector editing and a clean interface.",
+    "fileAssociations": [
+      {
+        "ext": [
+          "lite"
+        ],
+        "name": "DLite drawing",
+        "description": "DLite drawing",
+        "mimeType": "application/x-dlite",
+        "role": "Editor"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
     }
   }
 }

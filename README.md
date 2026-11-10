@@ -43,6 +43,19 @@ Tauri system dependencies: https://v2.tauri.app/start/prerequisites/
 | X | Swap to previous color |
 | Tab | Show/hide panels |
 
+## Installers
+
+Installers for Windows, macOS and Linux are on the [Releases page](../../releases).
+
+To publish a new version: bump `version` in `src-tauri/tauri.conf.json`, then push a tag:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+GitHub Actions (`.github/workflows/release.yml`) builds every installer and attaches them to the release.
+The installers are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper show a warning the first time.
+
 ## One-file build
 
 ```bash
