@@ -174,3 +174,36 @@ describe('History.stateId', () => {
     expect([start, saved]).not.toContain(h.stateId);
   });
 });
+
+import { embedUrl, parseYouTube } from '../src/ui/youtube';
+
+describe('parseYouTube', () => {
+  const id = 'dQw4w9WgXcQ';
+  it('understands common link shapes', () => {
+    for (const link of [
+      `https://www.youtube.com/watch?v=${id}`,
+      `youtube.com/watch?v=${id}&feature=share`,
+      `https://youtu.be/${id}`,
+      `https://www.youtube.com/shorts/${id}`,
+      `https://www.youtube.com/live/${id}`,
+      `https://m.youtube.com/watch?v=${id}`,
+      `https://www.youtube.com/embed/${id}`,
+      id,
+    ]) expect(parseYouTube(link)?.video, link).toBe(id);
+  });
+  it('keeps start time and playlist', () => {
+    expect(parseYouTube(`https://youtu.be/${id}?t=1m30s`)).toEqual({ video: id, start: 90 });
+    const p = parseYouTube('https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG')!;
+    expect(p.list).toBe('PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG');
+    expect(embedUrl(p)).toContain('/embed/videoseries?');
+  });
+  it('rejects other sites and junk', () => {
+    expect(parseYouTube('https://vimeo.com/123')).toBeNull();
+    expect(parseYouTube('https://evil.com/watch?v=' + id)).toBeNull();
+    expect(parseYouTube('hello world')).toBeNull();
+    expect(parseYouTube('https://www.youtube.com/watch?v=short')).toBeNull();
+  });
+  it('builds a privacy-enhanced embed URL', () => {
+    expect(embedUrl({ video: id, start: 5 })).toBe(`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&start=5`);
+  });
+});

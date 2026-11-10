@@ -7,6 +7,7 @@
   import NewDocDialog from './ui/NewDocDialog.svelte';
   import ToolRail from './ui/ToolRail.svelte';
   import TabBar from './ui/TabBar.svelte';
+  import YouTubePanel from './ui/YouTubePanel.svelte';
   import TopBar from './ui/TopBar.svelte';
   import ConfirmDialog from './ui/ConfirmDialog.svelte';
   import {
@@ -162,6 +163,7 @@
       <ColorPicker />
       <div class="divider"></div>
       <LayersPanel />
+      <YouTubePanel />
     </aside>
   </div>
   {#if ui.toast}
