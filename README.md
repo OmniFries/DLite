@@ -1,4 +1,4 @@
-# Lite Draw
+# DLite
 
 A lightweight desktop drawing app: as simple as Paint, with layers, pressure brushes and
 Animate-style vector strokes, in a clean Material-style UI. Built with Tauri 2 + Svelte 5.

@@ -24,6 +24,6 @@ dist-ssr
 *.sw?
 src-tauri/target
 dist-single
-LiteDraw.html
-lite-draw.zip
+DLite.html
+dlite.zip
 src-tauri/gen

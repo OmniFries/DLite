@@ -1,5 +1,5 @@
 [package]
-name = "lite-draw"
+name = "dlite"
 version = "0.1.0"
 description = "A lightweight drawing app"
 license = ""

@@ -9,4 +9,4 @@ const app = mount(App, { target: document.getElementById('app')! });
 export default app;
 
 // Handy for debugging and automated checks.
-(window as unknown as { liteDraw: typeof editor }).liteDraw = editor;
+(window as unknown as { dlite: typeof editor }).dlite = editor;

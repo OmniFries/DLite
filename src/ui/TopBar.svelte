@@ -21,7 +21,7 @@
     <div class="logo" aria-hidden="true">
       <Icon name="draw" filled />
     </div>
-    <span class="title">Lite Draw</span>
+    <span class="title">DLite</span>
   </div>
 
   <div class="group">
