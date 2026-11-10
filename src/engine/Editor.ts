@@ -607,14 +607,14 @@ export class Editor {
   }
 
   /**
-   * Shows a document in a new tab after the active one. An untouched
-   * "Untitled" tab is reused instead, so opening a file right away doesn't
-   * leave an empty tab behind.
+   * Shows a document in a new tab after the active one. With `reuseBlank`
+   * (used when opening a file), an untouched "Untitled" tab is replaced so
+   * no empty tab is left behind.
    */
-  openTab(doc: DrawingDocument, name: string, file: FileRef = {}): DocSession {
+  openTab(doc: DrawingDocument, name: string, file: FileRef = {}, reuseBlank = false): DocSession {
     const session = new DocSession(doc, name);
     session.file = file;
-    if (this.session.pristine) {
+    if (reuseBlank && this.session.pristine) {
       this.sessions[this.activeSession] = session;
       this.showSession(this.activeSession);
     } else {
@@ -666,8 +666,11 @@ export class Editor {
     const doc = new DrawingDocument(w, h, background ?? '');
     if (!background) doc.layers[0].name = 'Layer 1';
     else doc.insert(doc.createRaster(), 1);
-    const untitled = this.sessions.filter((s) => /^Untitled( \d+)?$/.test(s.name)).length;
-    this.openTab(doc, untitled && !this.session.pristine ? `Untitled ${untitled + 1}` : 'Untitled');
+    // Always a new tab, named Untitled, Untitled 2, Untitled 3…
+    const used = new Set(this.sessions.map((s) => s.name));
+    let name = 'Untitled';
+    for (let n = 2; used.has(name); n++) name = `Untitled ${n}`;
+    this.openTab(doc, name);
   }
 
   async exportImage(type: 'image/png' | 'image/jpeg' | 'image/webp' = 'image/png'): Promise<Blob> {

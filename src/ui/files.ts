@@ -134,10 +134,10 @@ async function openBytes(name: string, bytes: Uint8Array, where: { handle?: File
       (s) => (where.path && s.file.path === where.path) || (where.handle && s.file.handle === where.handle),
     );
     if (i >= 0) return editor.switchTab(i);
-    editor.openTab(await openLite(bytes), name, where);
+    editor.openTab(await openLite(bytes), name, where, true);
   } else {
     // An image opens as a new, unsaved drawing.
-    editor.openTab(await documentFromImage(new Blob([bytes as BlobPart])), name.replace(/\.[^.]+$/, ''));
+    editor.openTab(await documentFromImage(new Blob([bytes as BlobPart])), name.replace(/\.[^.]+$/, ''), {}, true);
   }
   editor.toast(`Opened ${name}`);
 }
