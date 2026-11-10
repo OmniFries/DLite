@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import Logo from './Logo.svelte';
   import { editor, ui } from './state.svelte';
   import { exportImage } from './files';
 
@@ -18,9 +19,7 @@
 
 <header class="top">
   <div class="brand">
-    <div class="logo" aria-hidden="true">
-      <Icon name="draw" filled />
-    </div>
+    <Logo />
     <span class="title">DLite</span>
   </div>
 
@@ -91,18 +90,6 @@
     align-items: center;
     gap: 10px;
     margin-right: 12px;
-  }
-  .logo {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    display: grid;
-    place-items: center;
-    color: #fff;
-    background: conic-gradient(from 200deg, #4285f4, #34a853, #fbbc04, #ea4335, #4285f4);
-  }
-  .logo :global(.icon) {
-    font-size: 20px;
   }
   .title {
     font-size: 18px;
