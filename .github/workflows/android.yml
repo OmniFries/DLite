@@ -34,10 +34,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Use the runner's Android NDK
-        run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+      # GitHub's Ubuntu runners come with the Android SDK and NDK installed.
+      - name: Use the runner's Android SDK and NDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+          echo "SDK: $ANDROID_SDK_ROOT  NDK: $ANDROID_NDK_LATEST_HOME"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
