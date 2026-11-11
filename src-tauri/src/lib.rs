@@ -30,6 +30,45 @@ fn queue(app: &tauri::AppHandle, files: Vec<String>) {
   let _ = app.emit("open-files", ());
 }
 
+/// Android: writes bytes to a file picked in the system file dialog. Those are
+/// `content://` URIs, which only Android's content resolver can open.
+/// The bytes are the raw request body; the URI comes in the `path` header.
+#[tauri::command]
+fn write_uri(app: tauri::AppHandle, request: tauri::ipc::Request<'_>) -> Result<(), String> {
+  use std::io::Write;
+  let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
+    return Err("expected raw bytes".into());
+  };
+  let uri = request
+    .headers()
+    .get("path")
+    .and_then(|v| v.to_str().ok())
+    .ok_or("missing path")?;
+  let url = tauri::Url::parse(uri).map_err(|e| e.to_string())?;
+  let mut opts = tauri_plugin_fs::OpenOptions::new();
+  opts.read(false).write(true).truncate(true).create(true);
+  let mut file = app
+    .fs()
+    .open(tauri_plugin_fs::FilePath::Url(url), opts)
+    .map_err(|e| e.to_string())?;
+  file.write_all(data).map_err(|e| e.to_string())?;
+  file.flush().map_err(|e| e.to_string())
+}
+
+/// Android: reads a file picked in the system file dialog (a `content://` URI).
+#[tauri::command]
+fn read_uri(app: tauri::AppHandle, path: String) -> Result<tauri::ipc::Response, String> {
+  use std::io::Read;
+  let url = tauri::Url::parse(&path).map_err(|e| e.to_string())?;
+  let mut file = app
+    .fs()
+    .open(tauri_plugin_fs::FilePath::Url(url), tauri_plugin_fs::OpenOptions::new())
+    .map_err(|e| e.to_string())?;
+  let mut buf = Vec::new();
+  file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+  Ok(tauri::ipc::Response::new(buf))
+}
+
 /// Called by the window to collect files waiting to be opened.
 #[tauri::command]
 fn take_open_files(state: tauri::State<PendingFiles>) -> Vec<String> {
@@ -48,7 +87,7 @@ pub fn run() {
     .plugin(tauri_plugin_process::init());
   builder
     .manage(PendingFiles::default())
-    .invoke_handler(tauri::generate_handler![take_open_files])
+    .invoke_handler(tauri::generate_handler![take_open_files, write_uri, read_uri])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

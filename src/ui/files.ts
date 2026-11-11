@@ -34,12 +34,49 @@ export function updateTitle() {
   document.title = `${ui.dirty ? '• ' : ''}${ui.docName} – DLite`;
 }
 
-const baseName = (n: string) => n.replace(/^.*[\\/]/, '');
+const isAndroid = () => isTauri() && /Android/i.test(navigator.userAgent);
+/** Android's file picker hands out content:// URIs instead of file paths. */
+const isContentUri = (p: string) => p.startsWith('content:');
+
+/** File name for display: works for paths and Android content URIs. */
+const baseName = (n: string) => {
+  let s = n;
+  if (isContentUri(s)) {
+    try {
+      s = decodeURIComponent(s);
+    } catch {
+      /* keep as is */
+    }
+    s = s.replace(/^.*[/:]/, '');
+  }
+  return s.replace(/^.*[\\/]/, '');
+};
+
+/** Writes a file in the desktop/Android app (content URIs go through a native command). */
+async function writePath(path: string, bytes: Uint8Array) {
+  if (isAndroid() && isContentUri(path)) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('write_uri', bytes, { headers: { path } });
+    return;
+  }
+  const { writeFile } = await import('@tauri-apps/plugin-fs');
+  await writeFile(path, bytes);
+}
+
+async function readPath(path: string): Promise<Uint8Array> {
+  if (isAndroid() && isContentUri(path)) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return new Uint8Array(await invoke<ArrayBuffer>('read_uri', { path }));
+  }
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  return readFile(path);
+}
 const withLite = (n: string) => (n.toLowerCase().endsWith('.lite') ? n : n.replace(/\.[^.]+$/, '') + '.lite');
 const extOf = (n: string) => (n.match(/\.([^.\\/]+)$/)?.[1] ?? '').toLowerCase();
 
 function fail(err: unknown, what: string) {
   if ((err as Error)?.name === 'AbortError') return; // user closed the picker
+  if (/cancel/i.test(String((err as Error)?.message ?? err))) return; // Android picker closed
   const msg = err instanceof LiteFormatError ? err.message : `${what} failed: ${(err as Error)?.message ?? err}`;
   editor.toast(msg);
 }
@@ -74,10 +111,9 @@ export async function saveDocument(saveAs: boolean): Promise<boolean> {
         const { save } = await import('@tauri-apps/plugin-dialog');
         path = (await save({ defaultPath: suggested, filters: [{ name: 'DLite drawing', extensions: ['lite'] }] })) ?? undefined;
         if (!path) return false;
-        path = withLite(path);
+        if (!isContentUri(path)) path = withLite(path);
       }
-      const { writeFile } = await import('@tauri-apps/plugin-fs');
-      await writeFile(path, bytes);
+      await writePath(path, bytes);
       setFile(baseName(path), { path });
     } else if (fsWin.showSaveFilePicker) {
       let handle = saveAs ? undefined : current.handle;
@@ -111,9 +147,7 @@ export async function openDocument() {
       const { open } = await import('@tauri-apps/plugin-dialog');
       const path = await open({ multiple: false, filters: [{ name: 'DLite drawings and images', extensions: ['lite', ...IMAGE_EXT] }] });
       if (typeof path !== 'string') return;
-      const { readFile } = await import('@tauri-apps/plugin-fs');
-      const bytes = await readFile(path);
-      await openBytes(baseName(path), bytes, { path });
+      await openBytes(baseName(path), await readPath(path), { path });
     } else if (fsWin.showOpenFilePicker) {
       const [handle] = await fsWin.showOpenFilePicker({ types: OPEN_TYPES });
       const file = await handle.getFile();
@@ -128,7 +162,10 @@ export async function openDocument() {
 }
 
 async function openBytes(name: string, bytes: Uint8Array, where: { handle?: FileHandle; path?: string }) {
-  if (extOf(name) === 'lite') {
+  // .lite files are zips ("PK"); Android sometimes gives names without an extension.
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
+  if (extOf(name) === 'lite' || isZip) {
+    if (extOf(name) !== 'lite') name = name + '.lite';
     // Already open? Just switch to it.
     const i = editor.sessions.findIndex(
       (s) => (where.path && s.file.path === where.path) || (where.handle && s.file.handle === where.handle),
@@ -144,10 +181,9 @@ async function openBytes(name: string, bytes: Uint8Array, where: { handle?: File
 
 /** Opens files from disk by path (desktop app: files double-clicked in the OS). */
 export async function openPaths(paths: string[]) {
-  const { readFile } = await import('@tauri-apps/plugin-fs');
   for (const path of paths) {
     try {
-      await openBytes(baseName(path), await readFile(path), { path });
+      await openBytes(baseName(path), await readPath(path), { path });
     } catch (err) {
       fail(err, 'Opening');
     }
@@ -215,11 +251,11 @@ export async function exportImage(type: 'image/png' | 'image/jpeg' | 'image/webp
     const name = `${editor.session.name.replace(/\.lite$/i, '')}.${EXT[type]}`;
     if (isTauri()) {
       const { save } = await import('@tauri-apps/plugin-dialog');
-      const { writeFile } = await import('@tauri-apps/plugin-fs');
       const path = await save({ defaultPath: name, filters: [{ name: EXT[type].toUpperCase(), extensions: [EXT[type]] }] });
       if (!path) return;
-      await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
-      editor.toast('Exported');
+      editor.toast('Exporting…');
+      await writePath(path, new Uint8Array(await blob.arrayBuffer()));
+      editor.toast(`Exported ${baseName(path)}`);
       return;
     }
     download(blob, name);

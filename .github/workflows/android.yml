@@ -54,6 +54,13 @@ jobs:
       - name: Generate the Android project
         run: npx tauri android init --ci
 
+      - name: Keep the app inside the system bars
+        run: |
+          MA=$(find src-tauri/gen/android/app/src/main -name MainActivity.kt | head -1)
+          echo "Generated MainActivity:"; cat "$MA"
+          { grep -m1 '^package ' "$MA"; cat src-tauri/android/MainActivity.kt; } > "$MA.new"
+          mv "$MA.new" "$MA"
+
       - name: Build the APK
         run: npx tauri android build --apk --target aarch64 --ci
 

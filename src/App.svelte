@@ -254,20 +254,15 @@
   /* ---------- phones ---------- */
   @media (max-width: 720px) {
     .body {
-      flex-direction: column;
       padding: 0;
       gap: 0;
     }
     .work {
-      order: 1;
       border-radius: 0;
     }
     .work :global(.stage) {
       margin: 0;
       border-radius: 0;
-    }
-    .body > :global(.rail) {
-      order: 2;
     }
     .sheet-scrim {
       display: block;

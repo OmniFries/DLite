@@ -65,7 +65,7 @@
     <button class="icon-btn tooltip below" data-tip="Undo (Ctrl+Z)" aria-label="Undo" disabled={!ui.canUndo} onclick={() => editor.undo()}>
       <Icon name="undo" />
     </button>
-    <button class="icon-btn tooltip below" data-tip="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled={!ui.canRedo} onclick={() => editor.redo()}>
+    <button class="icon-btn tooltip below redo-btn" data-tip="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled={!ui.canRedo} onclick={() => editor.redo()}>
       <Icon name="redo" />
     </button>
   </div>
@@ -120,18 +120,17 @@
     gap: 8px;
     padding: 0 12px 0 14px;
   }
-  /* Phones: icon-only, scrolls sideways if it still doesn't fit. */
+  /* Phones: icons only, sized to fit the screen without scrolling. */
   @media (max-width: 720px) {
     .top {
-      gap: 2px;
-      padding: env(safe-area-inset-top) 6px 0;
-      overflow-x: auto;
-      scrollbar-width: none;
+      gap: 0;
+      padding: env(safe-area-inset-top) 4px 0;
     }
     .title,
     .desktop-only,
     .export-label,
     .vsep,
+    .zoom-val,
     .zoom .icon-btn:not(:last-child),
     .spacer {
       display: none;
@@ -147,6 +146,16 @@
     }
     .export .filled-btn {
       padding: 0 12px;
+    }
+  }
+  /* Very narrow phones: pinch replaces the zoom button, and Redo makes room. */
+  @media (max-width: 380px) {
+    .zoom,
+    .redo-btn {
+      display: none;
+    }
+    .group:last-of-type {
+      margin-left: auto;
     }
   }
   .brand-wrap {
