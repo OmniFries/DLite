@@ -4,6 +4,7 @@
   import { editor, ui } from './state.svelte';
   import { exportImage, openDocument, saveDocument } from './files';
   import { appVersion, canSelfUpdate, checkForUpdates, RELEASES_URL } from './updates';
+  import { toggleFullscreen } from './fullscreen';
 
   const desktop = canSelfUpdate();
   const inApp = '__TAURI_INTERNALS__' in window;
@@ -88,6 +89,9 @@
   <div class="group">
     <button class="icon-btn tooltip below desktop-only" data-tip="Light / dark" aria-label="Toggle theme" onclick={toggleTheme}>
       <Icon name="contrast" />
+    </button>
+    <button class="icon-btn tooltip below" data-tip="Fullscreen (F11)" aria-label="Fullscreen" onclick={toggleFullscreen}>
+      <Icon name="fullscreen" />
     </button>
     <button class="icon-btn tooltip below" data-tip="Panels (Tab)" aria-label="Toggle panels" onclick={() => (ui.panelOpen = !ui.panelOpen)}>
       <Icon name={ui.panelOpen ? 'right_panel_close' : 'right_panel_open'} />

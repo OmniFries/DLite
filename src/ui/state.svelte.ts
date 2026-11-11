@@ -27,6 +27,10 @@ export const ui = $state({
   panelOpen: typeof window === 'undefined' || !window.matchMedia('(max-width: 720px)').matches,
   selectionCount: 0,
   newDocOpen: false,
+  /** Which tool-setting pop-up is open (one at a time). */
+  openSetting: null as string | null,
+  /** Fullscreen: hides the top bar and tabs and fills the screen. */
+  fullscreen: false,
   /** File name shown in the top bar (with .lite once saved). */
   docName: 'Untitled',
   dirty: false,

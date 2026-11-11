@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import Segmented from './Segmented.svelte';
+  import SettingButton from './SettingButton.svelte';
   import Slider from './Slider.svelte';
   import { editor, settings, ui } from './state.svelte';
 
@@ -9,7 +10,7 @@
 
   let isVector = $derived((ui.version, editor.doc.active.kind === 'vector'));
   let paints = $derived(ui.tool === 'brush' || ui.tool === 'pencil' || ui.tool === 'eraser');
-  let strokeEraser = $derived(ui.tool === 'eraser' && isVector && settings.eraserMode === 'stroke');
+  let vectorEraser = $derived(ui.tool === 'eraser' && isVector);
   const names: Record<string, string> = {
     brush: 'Brush',
     pencil: 'Pencil',
@@ -21,165 +22,210 @@
     hand: 'Hand',
     zoom: 'Zoom',
   };
+  const hints: Record<string, string> = {
+    select: 'Click a stroke, or drag to box-select. Shift adds. Drag handles to scale, the round handle to rotate.',
+    subselect: 'Click a stroke to see its points. Drag points or handles. Alt-drag a point to curve it. Double-click the line to add a point; Delete removes one.',
+    zoom: 'Click to zoom in, Alt+click to zoom out. Ctrl+scroll or pinch works with any tool.',
+    hand: 'Drag to pan. Hold Space with any tool, or use two fingers.',
+    eyedropper: 'Click to pick a color from the drawing.',
+  };
+  const gapNames: Record<number, string> = { 0: 'None', 4: 'S', 10: 'M', 24: 'L' };
 </script>
 
-<div class="bar">
+<div class="bar" role="toolbar" aria-label="Tool settings">
   <span class="tool-name">{names[ui.tool]}</span>
-  <span class="chip" class:vector={isVector} title={isVector ? 'Strokes on this layer stay editable' : 'This layer paints pixels'}>
+  <span
+    class="chip tooltip above"
+    class:vector={isVector}
+    data-tip={isVector ? 'Vector layer: strokes stay editable' : 'Raster layer: paints pixels'}
+    aria-label={isVector ? 'Vector layer' : 'Raster layer'}
+  >
     <Icon name={isVector ? 'gesture' : 'image'} />
-    {isVector ? 'Vector layer' : 'Raster layer'}
   </span>
+  <span class="sep"></span>
 
   {#if paints}
-    {#if ui.tool === 'eraser' && isVector}
-      <Segmented
-        label="Mode"
-        bind:value={settings.eraserMode}
-        options={[
-          { value: 'stroke', label: 'Stroke', tip: 'Deletes any whole stroke it touches (E to switch)' },
-          { value: 'free', label: 'Free', tip: 'Erases only where you rub, splitting strokes (E to switch)' },
-        ]}
-      />
+    {#if vectorEraser}
+      <SettingButton id="eraser-mode" icon={settings.eraserMode === 'free' ? 'ink_eraser' : 'deselect'} label="Eraser mode" value={settings.eraserMode === 'free' ? 'Free' : 'Stroke'}>
+        <Segmented
+          bind:value={settings.eraserMode}
+          options={[
+            { value: 'stroke', label: 'Stroke', tip: 'Deletes any whole stroke it touches' },
+            { value: 'free', label: 'Free', tip: 'Erases only where you rub' },
+          ]}
+        />
+        <span class="note">Press E again to switch.</span>
+      </SettingButton>
+    {:else if isVector}
+      <SettingButton id="draw-mode" icon="join" label="Drawing mode" value={settings.drawMode === 'merge' ? 'Merge' : 'Object'}>
+        <Segmented
+          bind:value={settings.drawMode}
+          options={[
+            { value: 'object', label: 'Object', tip: 'Each stroke stays separate' },
+            { value: 'merge', label: 'Merge', tip: 'Joins same colors, cuts other colors' },
+          ]}
+        />
+      </SettingButton>
     {/if}
-    {#if ui.tool !== 'eraser' && isVector}
-      <Segmented
-        label="Drawing"
-        bind:value={settings.drawMode}
-        options={[
-          { value: 'object', label: 'Object', tip: 'Each stroke stays separate and editable' },
-          { value: 'merge', label: 'Merge', tip: 'Joins same-color shapes and cuts through other colors, like Animate' },
-        ]}
-      />
+
+    <SettingButton id="size" icon="line_weight" label="Size" value={String(settings.size)}>
+      <Slider label="" bind:value={settings.size} min={1} max={500} curve format={px} />
+    </SettingButton>
+
+    {#if !vectorEraser}
+      <SettingButton id="opacity" icon="opacity" label="Opacity" value={pct(settings.opacity)}>
+        <Slider label="" bind:value={settings.opacity} min={0.01} max={1} step={0.01} format={pct} />
+      </SettingButton>
     {/if}
-    <Slider label="Size" bind:value={settings.size} min={1} max={500} curve format={px} />
-    {#if ui.tool !== 'eraser' || !isVector}
-      <Slider label="Opacity" bind:value={settings.opacity} min={0.01} max={1} step={0.01} format={pct} width={96} />
-    {/if}
+
     {#if ui.tool !== 'pencil' && !isVector}
-      <Slider label="Hardness" bind:value={settings.hardness} min={0} max={1} step={0.01} format={pct} width={96} />
+      <SettingButton id="hardness" icon="lens_blur" label="Hardness" value={pct(settings.hardness)}>
+        <Slider label="" bind:value={settings.hardness} min={0} max={1} step={0.01} format={pct} />
+      </SettingButton>
     {/if}
-    {#if ui.tool !== 'eraser' || !isVector}
-      <Slider label="Smoothing" bind:value={settings.smoothing} min={0} max={0.9} step={0.01} format={pct} width={96} />
+
+    {#if !vectorEraser}
+      <SettingButton id="smoothing" icon="timeline" label="Smoothing" value={pct(settings.smoothing)}>
+        <Slider label="" bind:value={settings.smoothing} min={0} max={0.9} step={0.01} format={pct} />
+      </SettingButton>
     {/if}
-    {#if ui.tool !== 'pencil' && !(ui.tool === 'eraser' && isVector)}
-      <label class="toggle tooltip below" data-tip="Pen pressure changes the size">
-        <input type="checkbox" bind:checked={settings.pressureSize} />
-        <Icon name="stylus" /> Size
-      </label>
-      {#if !isVector}
-        <label class="toggle tooltip below" data-tip="Pen pressure changes the opacity">
-          <input type="checkbox" bind:checked={settings.pressureOpacity} />
-          <Icon name="stylus" /> Opacity
-        </label>
-      {/if}
-    {/if}
-    {#if strokeEraser}
-      <span class="hint">Touch a stroke to delete it</span>
+
+    {#if ui.tool !== 'pencil' && !vectorEraser}
+      <SettingButton id="pressure" icon="stylus" label="Pen pressure" active={settings.pressureSize || (!isVector && settings.pressureOpacity)}>
+        <label class="check"><input type="checkbox" bind:checked={settings.pressureSize} /> Changes the size</label>
+        {#if !isVector}
+          <label class="check"><input type="checkbox" bind:checked={settings.pressureOpacity} /> Changes the opacity</label>
+        {/if}
+      </SettingButton>
     {/if}
   {:else if ui.tool === 'fill'}
     {#if isVector}
-      <Segmented
-        label="Close gaps"
-        bind:value={settings.fillGap}
-        options={[
-          { value: 0, label: 'None' },
-          { value: 4, label: 'Small' },
-          { value: 10, label: 'Medium' },
-          { value: 24, label: 'Large' },
-        ]}
-      />
+      <SettingButton id="gap" icon="conversion_path" label="Close gaps" value={gapNames[settings.fillGap] ?? ''}>
+        <Segmented
+          bind:value={settings.fillGap}
+          options={[
+            { value: 0, label: 'None' },
+            { value: 4, label: 'Small' },
+            { value: 10, label: 'Medium' },
+            { value: 24, label: 'Large' },
+          ]}
+        />
+        <span class="note">Click inside lines to fill, or click a fill to recolor it.</span>
+      </SettingButton>
     {:else}
-      <Slider label="Tolerance" bind:value={settings.tolerance} min={0} max={255} width={140} />
+      <SettingButton id="tolerance" icon="tune" label="Tolerance" value={String(settings.tolerance)}>
+        <Slider label="" bind:value={settings.tolerance} min={0} max={255} />
+      </SettingButton>
     {/if}
-    <Slider label="Opacity" bind:value={settings.opacity} min={0.01} max={1} step={0.01} format={pct} width={96} />
-    {#if isVector}<span class="hint">Click inside lines to fill, or click a fill to recolor it</span>{/if}
-  {:else if ui.tool === 'select'}
-    {#if ui.selectionCount}
-      <span class="hint">{ui.selectionCount} selected</span>
-      <button class="icon-btn small tooltip below" data-tip="Flip horizontal" aria-label="Flip horizontal" onclick={() => editor.flipSelection(true)}>
-        <Icon name="flip" />
-      </button>
-      <button class="icon-btn small tooltip below flip-v" data-tip="Flip vertical" aria-label="Flip vertical" onclick={() => editor.flipSelection(false)}>
-        <Icon name="flip" />
-      </button>
-      <button class="text-btn" onclick={() => editor.recolorSelection(settings.color)}>Apply color</button>
-      <button class="text-btn" onclick={() => editor.deleteSelection()}>Delete</button>
-      <button class="text-btn" onclick={() => editor.deselect()}>Deselect</button>
-      <span class="hint">Drag handles to scale (Shift keeps shape, Alt from center), round handle to rotate</span>
-    {:else}
-      <span class="hint">{isVector ? 'Click a stroke, or drag to box-select. Shift adds to the selection.' : 'Choose a vector layer to select strokes.'}</span>
-    {/if}
-  {:else if ui.tool === 'subselect'}
-    <span class="hint">
-      {isVector
-        ? 'Click a stroke to see its points. Drag points or handles · Alt-drag a point to curve it · Double-click the line to add a point · Delete removes a point'
-        : 'Choose a vector layer to edit points.'}
-    </span>
-  {:else if ui.tool === 'zoom'}
-    <span class="hint">Click to zoom in, Alt+click to zoom out. Ctrl+scroll works with any tool.</span>
-  {:else if ui.tool === 'hand'}
-    <span class="hint">Drag to pan. Hold Space with any tool to pan.</span>
-  {:else if ui.tool === 'eyedropper'}
-    <span class="hint">Click to pick a color from the drawing</span>
+    <SettingButton id="fill-opacity" icon="opacity" label="Opacity" value={pct(settings.opacity)}>
+      <Slider label="" bind:value={settings.opacity} min={0.01} max={1} step={0.01} format={pct} />
+    </SettingButton>
+  {:else if ui.tool === 'select' && ui.selectionCount}
+    <span class="count">{ui.selectionCount} selected</span>
+    <button class="icon-btn tooltip above" data-tip="Flip horizontal" aria-label="Flip horizontal" onclick={() => editor.flipSelection(true)}>
+      <Icon name="flip" />
+    </button>
+    <button class="icon-btn tooltip above flip-v" data-tip="Flip vertical" aria-label="Flip vertical" onclick={() => editor.flipSelection(false)}>
+      <Icon name="flip" />
+    </button>
+    <button class="icon-btn tooltip above" data-tip="Apply current color" aria-label="Apply color" onclick={() => editor.recolorSelection(settings.color)}>
+      <Icon name="format_paint" />
+    </button>
+    <button class="icon-btn tooltip above" data-tip="Delete (Del)" aria-label="Delete" onclick={() => editor.deleteSelection()}>
+      <Icon name="delete" />
+    </button>
+    <button class="icon-btn tooltip above" data-tip="Deselect (Esc)" aria-label="Deselect" onclick={() => editor.deselect()}>
+      <Icon name="deselect" />
+    </button>
+  {/if}
+
+  {#if hints[ui.tool] && !(ui.tool === 'select' && ui.selectionCount)}
+    <SettingButton id="hint-{ui.tool}" icon="help" label="How to use {names[ui.tool]}">
+      <span class="note">
+        {(ui.tool === 'select' || ui.tool === 'subselect') && !isVector ? 'Choose a vector layer first. ' : ''}{hints[ui.tool]}
+      </span>
+    </SettingButton>
   {/if}
 </div>
 
 <style>
   .bar {
-    height: 48px;
+    height: 52px;
     display: flex;
     align-items: center;
-    gap: 20px;
-    padding: 0 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
+    gap: 4px;
+    padding: 0 12px;
+    border-top: 1px solid var(--outline-variant);
+    flex: none;
+  }
+  @media (max-width: 720px) {
+    .bar {
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 0 6px;
+    }
+    /* The left tool strip already shows the active tool. */
+    .tool-name {
+      display: none;
+    }
+    .sep {
+      margin: 0 2px;
+    }
   }
   .tool-name {
     font-weight: 500;
-    min-width: 72px;
+    margin-right: 4px;
+    white-space: nowrap;
   }
   .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 28px;
-    padding: 0 10px;
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
     border-radius: var(--radius-s);
     border: 1px solid var(--outline-variant);
     color: var(--on-surface-variant);
-    font-size: 12px;
-    white-space: nowrap;
+    flex: none;
   }
   .chip :global(.icon) {
-    font-size: 16px;
+    font-size: 18px;
   }
   .chip.vector {
     background: var(--primary-container);
     color: var(--on-primary-container);
     border-color: transparent;
   }
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+  .sep {
+    width: 1px;
+    height: 24px;
+    background: var(--outline-variant);
+    margin: 0 6px;
+    flex: none;
+  }
+  .count {
     font-size: 13px;
     color: var(--on-surface-variant);
-    cursor: pointer;
     white-space: nowrap;
-  }
-  .toggle input {
-    accent-color: var(--primary);
-  }
-  .toggle :global(.icon) {
-    font-size: 18px;
+    margin-right: 4px;
   }
   .flip-v :global(.icon) {
     transform: rotate(90deg);
   }
-  .hint {
-    color: var(--on-surface-variant);
+  .note {
     font-size: 13px;
-    white-space: nowrap;
+    line-height: 1.45;
+    color: var(--on-surface-variant);
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .check input {
+    accent-color: var(--primary);
+    width: 18px;
+    height: 18px;
   }
 </style>

@@ -42,6 +42,7 @@ Tauri system dependencies: https://v2.tauri.app/start/prerequisites/
 | Ctrl+Shift+E | Export PNG |
 | X | Swap to previous color |
 | Tab | Show/hide panels |
+| F11 or F | Fullscreen (Esc to leave) |
 
 ## Installers
 

@@ -9,6 +9,8 @@
   import TabBar from './ui/TabBar.svelte';
   import YouTubePanel from './ui/YouTubePanel.svelte';
   import { scheduleUpdateCheck } from './ui/updates';
+  import { setFullscreen, toggleFullscreen } from './ui/fullscreen';
+  import Icon from './ui/Icon.svelte';
   import TopBar from './ui/TopBar.svelte';
   import ConfirmDialog from './ui/ConfirmDialog.svelte';
   import {
@@ -142,9 +144,16 @@
     if (k === '[') settings.size = Math.max(1, Math.round(settings.size / 1.15));
     else if (k === ']') settings.size = Math.min(500, Math.max(settings.size + 1, Math.round(settings.size * 1.15)));
     else if (k === 'delete' || k === 'backspace') editor.deleteKey();
-    else if (k === 'escape') {
-      editor.tool.cancel?.(editor);
-      editor.deselect();
+    else if (k === 'f11' || (k === 'f' && !e.shiftKey)) {
+      e.preventDefault();
+      void toggleFullscreen();
+    } else if (k === 'escape') {
+      if (ui.openSetting) ui.openSetting = null;
+      else if (ui.fullscreen) void setFullscreen(false);
+      else {
+        editor.tool.cancel?.(editor);
+        editor.deselect();
+      }
     }
     else if (k === 'tab') {
       e.preventDefault();
@@ -167,14 +176,31 @@
   onbeforeunload={onBeforeUnload}
 />
 
-<div class="app">
-  <TopBar />
+<div class="app" class:fullscreen={ui.fullscreen}>
+  {#if !ui.fullscreen}<TopBar />{/if}
   <div class="body">
     <ToolRail />
     <main class="work">
-      <TabBar />
-      <ContextBar />
+      {#if !ui.fullscreen}<TabBar />{/if}
       <CanvasView />
+      <ContextBar />
+      {#if ui.fullscreen}
+        <!-- A few essentials float over the canvas while fullscreen. -->
+        <div class="fs-bar" role="toolbar" aria-label="Fullscreen controls">
+          <button class="icon-btn tooltip below" data-tip="Undo (Ctrl+Z)" aria-label="Undo" disabled={!ui.canUndo} onclick={() => editor.undo()}>
+            <Icon name="undo" />
+          </button>
+          <button class="icon-btn tooltip below" data-tip="Redo" aria-label="Redo" disabled={!ui.canRedo} onclick={() => editor.redo()}>
+            <Icon name="redo" />
+          </button>
+          <button class="icon-btn tooltip below" data-tip="Colors & layers" aria-label="Toggle panels" onclick={() => (ui.panelOpen = !ui.panelOpen)}>
+            <Icon name={ui.panelOpen ? 'right_panel_close' : 'right_panel_open'} />
+          </button>
+          <button class="icon-btn tooltip below" data-tip="Exit fullscreen (Esc)" aria-label="Exit fullscreen" onclick={() => setFullscreen(false)}>
+            <Icon name="fullscreen_exit" />
+          </button>
+        </div>
+      {/if}
     </main>
     {#if phone && ui.panelOpen}
       <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -228,8 +254,35 @@
     border-radius: var(--radius-l);
     overflow: hidden;
   }
+  .work {
+    position: relative;
+  }
   .work :global(.stage) {
-    margin: 0 8px 8px;
+    margin: 8px 8px 0;
+  }
+  .app.fullscreen .body {
+    padding: 0;
+    gap: 0;
+  }
+  .app.fullscreen .work {
+    border-radius: 0;
+  }
+  .app.fullscreen .work :global(.stage) {
+    margin: 0;
+    border-radius: 0;
+  }
+  .fs-bar {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    box-shadow: var(--elev-2);
+    backdrop-filter: blur(8px);
   }
   .panel {
     width: 288px;
