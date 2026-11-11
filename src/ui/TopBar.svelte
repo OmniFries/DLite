@@ -3,6 +3,12 @@
   import Logo from './Logo.svelte';
   import { editor, ui } from './state.svelte';
   import { exportImage, openDocument, saveDocument } from './files';
+  import { appVersion, checkForUpdates, RELEASES_URL } from './updates';
+
+  const desktop = '__TAURI_INTERNALS__' in window;
+  let aboutOpen = $state(false);
+  let version = $state('');
+  void appVersion().then((v) => (version = v));
 
   let exportOpen = $state(false);
   let zoomText = $derived(Math.round(ui.zoom * 100) + '%');
@@ -18,9 +24,31 @@
 </script>
 
 <header class="top">
-  <div class="brand">
-    <Logo />
-    <span class="title">DLite</span>
+  <div class="brand-wrap">
+    <button class="brand" aria-label="About DLite" aria-expanded={aboutOpen} onclick={() => (aboutOpen = !aboutOpen)}>
+      <Logo />
+      <span class="title">DLite</span>
+    </button>
+    {#if aboutOpen}
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="scrim" onclick={() => (aboutOpen = false)}></div>
+      <div class="menu about" role="menu">
+        <div class="about-head">
+          <strong>DLite</strong>
+          <span>Version {version}</span>
+        </div>
+        {#if desktop}
+          <button role="menuitem" onclick={() => { aboutOpen = false; checkForUpdates(true); }}>
+            <Icon name="update" /> Check for updates
+          </button>
+        {:else}
+          <a role="menuitem" href={RELEASES_URL} target="_blank" rel="noopener noreferrer" onclick={() => (aboutOpen = false)}>
+            <Icon name="download" /> Get the desktop app
+          </a>
+        {/if}
+      </div>
+    {/if}
   </div>
   <div class="group">
     <button class="icon-btn tooltip below" data-tip="Open (Ctrl+O)" aria-label="Open" onclick={openDocument}>
@@ -91,11 +119,52 @@
     gap: 8px;
     padding: 0 12px 0 14px;
   }
+  .brand-wrap {
+    position: relative;
+    margin-right: 12px;
+  }
   .brand {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-right: 12px;
+    height: 40px;
+    padding: 0 12px 0 4px;
+    border-radius: var(--radius-full);
+    transition: background var(--dur) var(--ease);
+  }
+  .brand:hover {
+    background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+  }
+  .menu.about {
+    left: 0;
+    right: auto;
+    min-width: 220px;
+  }
+  .about-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid var(--outline-variant);
+    margin-bottom: 4px;
+  }
+  .about-head span {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+  }
+  .menu.about button,
+  .menu.about a {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    width: 100%;
+    padding: 10px 16px;
+  }
+  .menu.about a:hover {
+    background: color-mix(in srgb, var(--on-surface) 8%, transparent);
   }
   .title {
     font-size: 18px;

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DLite",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "app.dlite.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -56,6 +56,18 @@
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1QjUwQTQzMTg1MkU4OUIKUldTYjZGSVlRd3ExTlRjWStRYWQ2ZVJydWQxQlNVSGVwZkQ3bWQxTU5FK2NIUzN6TmdpWjRnWWIK",
+      "endpoints": [
+        "https://github.com/OmniFries/DLite/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

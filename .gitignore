@@ -27,3 +27,8 @@ dist-single
 DLite.html
 dlite.zip
 src-tauri/gen
+
+# Signing keys must never be committed
+*.key
+*.key.pub
+~/

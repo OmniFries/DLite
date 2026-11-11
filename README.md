@@ -47,13 +47,14 @@ Tauri system dependencies: https://v2.tauri.app/start/prerequisites/
 
 Installers for Windows, macOS and Linux are on the [Releases page](../../releases).
 
-To publish a new version: bump `version` in `src-tauri/tauri.conf.json`, then push a tag:
+**Updating:** from version 0.2.0 on, DLite checks for updates when it starts and offers to
+install them (or click the DLite logo → *Check for updates*). Updates are signed; the app only
+accepts ones signed with the project's private key.
 
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
-
-GitHub Actions (`.github/workflows/release.yml`) builds every installer and attaches them to the release.
+**Publishing a new version:** bump `version` in `src-tauri/tauri.conf.json` and `package.json`,
+push, then run the *Release* workflow from the Actions tab (or push a `v*` tag). It builds every
+installer, signs them with the `TAURI_SIGNING_PRIVATE_KEY` secret, and publishes the release with
+`latest.json`, which installed apps read to find updates.
 The installers are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper show a warning the first time.
 
 ## One-file build

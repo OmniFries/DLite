@@ -8,6 +8,7 @@
   import ToolRail from './ui/ToolRail.svelte';
   import TabBar from './ui/TabBar.svelte';
   import YouTubePanel from './ui/YouTubePanel.svelte';
+  import { scheduleUpdateCheck } from './ui/updates';
   import TopBar from './ui/TopBar.svelte';
   import ConfirmDialog from './ui/ConfirmDialog.svelte';
   import {
@@ -63,6 +64,7 @@
   function onBeforeUnload(e: BeforeUnloadEvent) {
     if (unsavedCount()) e.preventDefault();
   }
+  scheduleUpdateCheck();
   if ('__TAURI_INTERNALS__' in window) {
     // .lite files double-clicked in the OS: at launch, and later while running (macOS).
     void Promise.all([import('@tauri-apps/api/core'), import('@tauri-apps/api/event')]).then(([{ invoke }, { listen }]) => {

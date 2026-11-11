@@ -1,6 +1,7 @@
 # Builds DLite installers for Windows, macOS and Linux and publishes them as a
 # GitHub Release. Runs when a version tag like v0.1.0 is pushed, or by hand
-# from the Actions tab ("Run workflow").
+# from the Actions tab ("Run workflow"). Needs the repo secrets
+# TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
 name: Release
 
 on:
@@ -51,6 +52,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the installers so the app's auto-updater trusts them.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: DLite v__VERSION__
@@ -59,6 +63,8 @@ jobs:
             - **Windows:** `DLite_..._x64-setup.exe` (or the `.msi`)
             - **macOS:** `DLite_..._universal.dmg` (Apple Silicon and Intel)
             - **Linux:** `.AppImage` (any distro), `.deb` (Ubuntu/Debian) or `.rpm` (Fedora)
+
+            Already have DLite 0.2.0 or newer? It updates itself — no download needed.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
