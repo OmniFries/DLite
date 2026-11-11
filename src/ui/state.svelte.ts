@@ -23,7 +23,8 @@ export const ui = $state({
   /** Bumped whenever the document changes so panels re-read it. */
   version: 0,
   toast: '',
-  panelOpen: true,
+  /** Side panel; starts closed on phones so the canvas gets the screen. */
+  panelOpen: typeof window === 'undefined' || !window.matchMedia('(max-width: 720px)').matches,
   selectionCount: 0,
   newDocOpen: false,
   /** File name shown in the top bar (with .lite once saved). */

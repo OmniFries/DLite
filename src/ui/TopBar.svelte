@@ -3,9 +3,10 @@
   import Logo from './Logo.svelte';
   import { editor, ui } from './state.svelte';
   import { exportImage, openDocument, saveDocument } from './files';
-  import { appVersion, checkForUpdates, RELEASES_URL } from './updates';
+  import { appVersion, canSelfUpdate, checkForUpdates, RELEASES_URL } from './updates';
 
-  const desktop = '__TAURI_INTERNALS__' in window;
+  const desktop = canSelfUpdate();
+  const inApp = '__TAURI_INTERNALS__' in window;
   let aboutOpen = $state(false);
   let version = $state('');
   void appVersion().then((v) => (version = v));
@@ -44,7 +45,7 @@
           </button>
         {:else}
           <a role="menuitem" href={RELEASES_URL} target="_blank" rel="noopener noreferrer" onclick={() => (aboutOpen = false)}>
-            <Icon name="download" /> Get the desktop app
+            <Icon name="download" /> {inApp ? 'Get the latest version' : 'Get the desktop app'}
           </a>
         {/if}
       </div>
@@ -57,7 +58,7 @@
     <button class="icon-btn tooltip below" data-tip="Save (Ctrl+S)" aria-label="Save" onclick={() => saveDocument(false)}>
       <Icon name="save" />
     </button>
-    <button class="icon-btn tooltip below" data-tip="Save as… (Ctrl+Shift+S)" aria-label="Save as" onclick={() => saveDocument(true)}>
+    <button class="icon-btn tooltip below desktop-only" data-tip="Save as… (Ctrl+Shift+S)" aria-label="Save as" onclick={() => saveDocument(true)}>
       <Icon name="save_as" />
     </button>
     <div class="vsep"></div>
@@ -85,7 +86,7 @@
   </div>
 
   <div class="group">
-    <button class="icon-btn tooltip below" data-tip="Light / dark" aria-label="Toggle theme" onclick={toggleTheme}>
+    <button class="icon-btn tooltip below desktop-only" data-tip="Light / dark" aria-label="Toggle theme" onclick={toggleTheme}>
       <Icon name="contrast" />
     </button>
     <button class="icon-btn tooltip below" data-tip="Panels (Tab)" aria-label="Toggle panels" onclick={() => (ui.panelOpen = !ui.panelOpen)}>
@@ -93,7 +94,7 @@
     </button>
     <div class="export">
       <button class="filled-btn" onclick={() => (exportOpen = !exportOpen)}>
-        <Icon name="download" /> Export
+        <Icon name="download" /> <span class="export-label">Export</span>
       </button>
       {#if exportOpen}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -118,6 +119,35 @@
     align-items: center;
     gap: 8px;
     padding: 0 12px 0 14px;
+  }
+  /* Phones: icon-only, scrolls sideways if it still doesn't fit. */
+  @media (max-width: 720px) {
+    .top {
+      gap: 2px;
+      padding: env(safe-area-inset-top) 6px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .title,
+    .desktop-only,
+    .export-label,
+    .vsep,
+    .zoom .icon-btn:not(:last-child),
+    .spacer {
+      display: none;
+    }
+    .brand-wrap {
+      margin-right: 0;
+    }
+    .zoom {
+      margin: 0 0 0 auto;
+    }
+    .export {
+      margin-left: 2px;
+    }
+    .export .filled-btn {
+      padding: 0 12px;
+    }
   }
   .brand-wrap {
     position: relative;

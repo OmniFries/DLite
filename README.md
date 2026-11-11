@@ -47,6 +47,9 @@ Tauri system dependencies: https://v2.tauri.app/start/prerequisites/
 
 Installers for Windows, macOS and Linux are on the [Releases page](../../releases).
 
+**Android:** `DLite_..._android_arm64.apk` on the same page. Open it on your phone and allow
+"install unknown apps" for your browser. Built by `.github/workflows/android.yml` after each release.
+
 **Updating:** from version 0.2.0 on, DLite checks for updates when it starts and offers to
 install them (or click the DLite logo → *Check for updates*). Updates are signed; the app only
 accepts ones signed with the project's private key.

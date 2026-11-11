@@ -49,8 +49,6 @@
           "path": "$DOWNLOAD/**"
         }
       ]
-    },
-    "updater:default",
-    "process:allow-restart"
+    }
   ]
 }

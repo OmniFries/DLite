@@ -2,6 +2,9 @@ import { confirmQuit } from './files';
 import { ask, editor, ui } from './state.svelte';
 
 const isTauri = () => '__TAURI_INTERNALS__' in window;
+const isMobile = () => /Android|iPhone|iPad/i.test(navigator.userAgent);
+/** The desktop app updates itself; phones and browsers don't. */
+export const canSelfUpdate = () => isTauri() && !isMobile();
 export const RELEASES_URL = 'https://github.com/OmniFries/DLite/releases/latest';
 
 export async function appVersion(): Promise<string> {
@@ -23,8 +26,8 @@ let checking = false;
  * update exists; a manual check also says "You're up to date" or why it failed.
  */
 export async function checkForUpdates(manual: boolean) {
-  if (!isTauri()) {
-    if (manual) editor.toast('Updates are for the desktop app. Download it from GitHub Releases.');
+  if (!canSelfUpdate()) {
+    if (manual) editor.toast('Get the newest version from GitHub Releases.');
     return;
   }
   if (checking) return;
@@ -69,5 +72,5 @@ export async function checkForUpdates(manual: boolean) {
 
 /** Checks quietly a few seconds after the desktop app starts. */
 export function scheduleUpdateCheck() {
-  if (isTauri()) setTimeout(() => void checkForUpdates(false), 5000);
+  if (canSelfUpdate()) setTimeout(() => void checkForUpdates(false), 5000);
 }

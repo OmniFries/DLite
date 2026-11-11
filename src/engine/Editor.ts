@@ -66,6 +66,14 @@ export class Editor {
   private frame = 0;
   private activePointer: number | null = null;
   private tempTool: Tool | null = null; // space / middle-button pan
+  private activeStarted = 0; // when the current pointer went down (ms)
+  /** Fingers on the canvas, by pointer id (screen coordinates). */
+  private touches = new Map<number, { x: number; y: number }>();
+  /** Set while two fingers pinch/pan; cleared when every finger is lifted. */
+  private gesture: { mid: { x: number; y: number }; dist: number } | null = null;
+  private gestureLock = false;
+  /** Once a stylus is used, fingers only pan and zoom (palm rejection). */
+  private penSeen = false;
   private spaceDown = false;
   private ro: ResizeObserver | null = null;
   private cleanup: (() => void)[] = [];
@@ -196,21 +204,75 @@ export class Editor {
     return { x, y, sx, sy, p, pointerType: e.pointerType, shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey || e.metaKey };
   }
 
+  private screenPos(e: PointerEvent) {
+    const r = this.canvas!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
   private onDown(e: PointerEvent) {
-    if (this.activePointer !== null) return;
     // Give keyboard shortcuts back to the app when the user starts drawing.
     (document.activeElement as HTMLElement | null)?.blur?.();
+    if (e.pointerType === 'pen') this.penSeen = true;
+    if (e.pointerType === 'touch' && this.onTouchDown(e)) return;
+    if (this.activePointer !== null) return;
     if (e.button === 1) this.tempTool = this.tools.hand;
     else if (e.button !== 0 && !this.tempTool) return;
     this.activePointer = e.pointerId;
+    this.activeStarted = performance.now();
     this.canvas!.setPointerCapture(e.pointerId);
     this.tool.down(this, this.info(e));
     e.preventDefault();
   }
 
+  /**
+   * Touch handling: two fingers pinch-zoom and pan. After a stylus has been
+   * used, a single finger pans too, so a resting palm never draws.
+   * Returns true when the event was used for a gesture.
+   */
+  private onTouchDown(e: PointerEvent): boolean {
+    this.touches.set(e.pointerId, this.screenPos(e));
+    this.canvas!.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    if (this.gestureLock) return true;
+    const fingerPans = this.penSeen;
+    if (this.touches.size >= 2 || fingerPans) {
+      // A stroke that just started with the first finger was the start of a pinch: drop it.
+      if (this.activePointer !== null && this.touches.has(this.activePointer)) {
+        if (performance.now() - this.activeStarted < 300) this.tool.cancel?.(this);
+        else this.tool.up(this, this.info(e));
+        this.activePointer = null;
+      }
+      if (this.activePointer !== null) return true; // the pen is drawing: ignore the palm
+      this.gestureLock = true;
+      this.gesture = this.gestureState();
+      return true;
+    }
+    return false;
+  }
+
+  private gestureState() {
+    const pts = [...this.touches.values()];
+    const mid = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+    const dist = pts.length >= 2 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0;
+    return { mid, dist };
+  }
+
   private onMove(e: PointerEvent) {
+    if (this.touches.has(e.pointerId)) {
+      this.touches.set(e.pointerId, this.screenPos(e));
+      if (this.gesture) {
+        const next = this.gestureState();
+        this.viewport.pan(next.mid.x - this.gesture.mid.x, next.mid.y - this.gesture.mid.y);
+        if (this.gesture.dist > 0 && next.dist > 0) {
+          this.viewport.zoomAt(this.viewport.zoom * (next.dist / this.gesture.dist), next.mid.x, next.mid.y);
+        }
+        this.gesture = next;
+        this.viewChanged();
+        return;
+      }
+    }
     if (this.activePointer === null) {
-      this.tool.hover?.(this, this.info(e));
+      if (e.pointerType !== 'touch') this.tool.hover?.(this, this.info(e));
       return;
     }
     if (e.pointerId !== this.activePointer) return;
@@ -220,6 +282,16 @@ export class Editor {
   }
 
   private onUp(e: PointerEvent) {
+    if (this.touches.delete(e.pointerId)) {
+      if (this.gesture) {
+        // Keep pinching/panning with the remaining fingers; unlock when all are up.
+        this.gesture = this.touches.size ? this.gestureState() : null;
+        if (!this.touches.size) this.gestureLock = false;
+        if (this.touches.size === 1 && !this.penSeen) this.gesture = null;
+        return;
+      }
+      if (!this.touches.size) this.gestureLock = false;
+    }
     if (e.pointerId !== this.activePointer) return;
     this.tool.up(this, this.info(e));
     this.activePointer = null;

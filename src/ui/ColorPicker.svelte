@@ -167,7 +167,8 @@
   }
   .swatches {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(32px, 40px));
+    justify-content: space-between;
     gap: 8px;
   }
   .swatch {

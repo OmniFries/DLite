@@ -35,6 +35,11 @@
 
   let dragOver = $state(false);
 
+  // Phone layout: tools at the bottom, panels in a slide-up sheet.
+  const phoneQuery = window.matchMedia('(max-width: 720px)');
+  let phone = $state(phoneQuery.matches);
+  phoneQuery.addEventListener('change', (e) => (phone = e.matches));
+
   function onDrop(e: DragEvent) {
     dragOver = false;
     const file = e.dataTransfer?.files?.[0];
@@ -171,7 +176,13 @@
       <ContextBar />
       <CanvasView />
     </main>
+    {#if phone && ui.panelOpen}
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="sheet-scrim" onclick={() => (ui.panelOpen = false)}></div>
+    {/if}
     <aside class="panel" class:closed={!ui.panelOpen} aria-hidden={!ui.panelOpen}>
+      {#if phone}<div class="grabber" aria-hidden="true"></div>{/if}
       <ColorPicker />
       <div class="divider"></div>
       <LayersPanel />
@@ -235,6 +246,75 @@
     opacity: 0;
     margin-left: -8px;
     pointer-events: none;
+  }
+  .sheet-scrim {
+    display: none;
+  }
+
+  /* ---------- phones ---------- */
+  @media (max-width: 720px) {
+    .body {
+      flex-direction: column;
+      padding: 0;
+      gap: 0;
+    }
+    .work {
+      order: 1;
+      border-radius: 0;
+    }
+    .work :global(.stage) {
+      margin: 0;
+      border-radius: 0;
+    }
+    .body > :global(.rail) {
+      order: 2;
+    }
+    .sheet-scrim {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: var(--scrim);
+      z-index: 60;
+      animation: fade-in 150ms var(--ease);
+    }
+    .panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: auto;
+      max-height: 78vh;
+      overflow-y: auto;
+      border-radius: 28px 28px 0 0;
+      box-shadow: var(--elev-3);
+      z-index: 61;
+      padding-bottom: env(safe-area-inset-bottom);
+      transition: transform 250ms var(--ease), opacity 200ms var(--ease);
+    }
+    .panel.closed {
+      width: auto;
+      margin-left: 0;
+      transform: translateY(100%);
+    }
+    .grabber {
+      width: 32px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--outline);
+      margin: 10px auto 2px;
+      flex: none;
+    }
+    .panel :global(.layers) {
+      flex: none;
+    }
+    .panel :global(.layers .list) {
+      max-height: 40vh;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
   }
   .divider {
     height: 1px;

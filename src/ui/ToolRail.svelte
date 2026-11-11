@@ -68,4 +68,30 @@
     background: var(--outline-variant);
     margin: 4px 0;
   }
+  /* Phones: a scrollable tool bar along the bottom. */
+  @media (max-width: 720px) {
+    .rail {
+      flex-direction: row;
+      width: 100%;
+      height: 60px;
+      padding: 0 8px env(safe-area-inset-bottom);
+      gap: 2px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      border-top: 1px solid var(--outline-variant);
+      background: var(--surface);
+      flex: none;
+    }
+    .tool {
+      flex: none;
+      width: 52px;
+      height: 44px;
+    }
+    .sep {
+      width: 1px;
+      height: 24px;
+      margin: 0 4px;
+      flex: none;
+    }
+  }
 </style>
